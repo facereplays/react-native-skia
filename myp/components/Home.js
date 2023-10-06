@@ -2,7 +2,10 @@ import {useEffect} from "react";
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Svg, {Path, G, Rect} from 'react-native-svg';
-import {StyleSheet, Text, useWindowDimensions, View} from 'react-native';
+import {Pressable, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
+import { MaterialCommunityIcons} from "@expo/vector-icons";
+import {HStack} from "@react-native-material/core";
+
 
 const Home = ({navigation}) => {
   const {height, width, scale, fontScale} = useWindowDimensions();
@@ -15,12 +18,11 @@ const Home = ({navigation}) => {
     <View style={[
       styles.container,
       {
-        flexDirection: 'column', padding: '0px'
+flexDirection: 'column', padding: '0px'
       },
     ]}>
-      <Svg version="1.1" id="Layer_1" x="0px"
-           y="0px" height="80%" width="80%"
-           viewBox="0 0 818 900" style={{flex: 4}}>
+      <Svg version="1.1"
+           viewBox="0 0 818 1050"          style={{flex: 1,height:'80%'}}>
 
         <G style={styles.gg}>
           <Path style={styles.st1} d="M290.36,251.78c18,0,168,2,207,8"/>
@@ -115,12 +117,26 @@ const Home = ({navigation}) => {
           </G>
         </G>
       </Svg>
-
+<View style={{width:'40%',height:'20%',}}>
+  <HStack m={4} spacing={12}>
+    <Pressable onPress={() => navigation.navigate('List')}>
+    <MaterialCommunityIcons name="view-gallery-outline" size={40} color="black" />
+    </Pressable>
+<Pressable onPress={() => navigation.navigate('Draw')}>
+  <MaterialCommunityIcons name="draw-pen" size={40} color="black" />
+  </Pressable>
+  <MaterialCommunityIcons name="share-variant" size={40} color="black" />
+    <Pressable onPress={() => navigation.navigate('Profile')}>
+      <MaterialCommunityIcons name="account" size={40} color="black" />
+    </Pressable>
+  </HStack>
+</View>
 
     </View>
   );
 };
 const styles = StyleSheet.create({
+  pre:{border:1,borderRadius:'50%'},
   icon: {
     flex: 1,width:48,
     padding: 10
@@ -130,7 +146,7 @@ const styles = StyleSheet.create({
     padding: 10,
     alignContent: 'center', justifyContent: 'center', alignItems: 'center', justifyItems: 'center'
   },
-  gg: {transform: 'translate(0 -150)'},
+  gg: {transform: 'translate(0 -200)'},
   st1: {
     fill: 'none',
     stroke: '#7ABFE2', strokeWidth: 86,

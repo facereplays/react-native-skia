@@ -59,7 +59,7 @@ const ln=stroke.dots.slice(0,Math.ceil(locProg*stroke.dots.length));
      :
     progress>stroke.startS && stroke.dots && progress<=stroke.startS+stroke.len ?
       <Path color={stroke.color} path={pth}/>
-      : '';
+      : null;
 };
 
 const SujetS = ({itemS,swe}) => {
@@ -74,7 +74,9 @@ const speed=6;
   const [paths, setPaths] = useState<PathS[]>([]);
   const [objets, setObjets] = useState<ObjetS[]>([]);
   const [scaleS, setScaleS] = useState(null);
+  const [size, setSize] = useState(null);
   const [totalLen, setTotalLen] = useState(0);
+
   const [sLen, setSLen] = useState(0);
   const [drawInt, setDrawInt] = useState(null);
   const stopProg = ()=> {
@@ -89,17 +91,16 @@ const speed=6;
     // Will change fadeAnim value to 1 in 5 seconds
 
     setProgress(0);
-    console.log(t,4);
-    Animated.timing(fadeAnim, {
 
-      toValue: t/2,
-      duration: t/2,
+    Animated.timing(fadeAnim, {
+toValue: t/2,
+      duration: t/4,
       useNativeDriver: true,
     }).start();
   };
 
   const startProg = (st, totalLen_)=>{
-    console.log('ddd');
+
     fadeAnim.setValue(0);
     fadeIn(totalLen_);
     fadeAnim.addListener(u=>{setProgress(u.value*2)});
@@ -144,7 +145,7 @@ let len=0;
         s.pth = getSvgPathFromStroke((getStroke(pp,{size: 0.7 ,thinning:1, simulatePressure: false})));
 
       })
-console.log(start,json.records.map(j=>j.id).join(','));
+//console.log(start,json.records.map(j=>j.id).join(','));
       setPaths(currentPaths=>currentPaths.concat(json.records));
 
 if(start==1) {
@@ -162,9 +163,16 @@ startProg(0,tot);
       const response = await fetch('https://buben-sha.herokuapp.com/api/records/sujet/' + itemS.id + '?join=objet&exclude=code');
       const json = await response.json();
       const szAr = json.size.split(',');
+      setSize(szAr);
      width<height && szAr[0]<szAr[1] ? setScaleS(width/szAr[0]) :
        width>height && szAr[0]>szAr[1] ? setScaleS(height/szAr[1]) :
          width>height && szAr[1]>szAr[0] ? setScaleS(height/szAr[1]) : setScaleS(0.6);
+      setScaleS(current=>{
+        console.log(szAr[1]*current);
+
+        return Number(current);
+
+      })
       setTotalLen(json.totaltime);
     setSujetS(json);
 
@@ -188,7 +196,7 @@ startProg(0,tot);
   }, []);
   */
   useEffect(() => {
-console.log(sujetS);
+
     //fadeAnim.stopAnimation();
   totalLen === 0 ?  getSujet() : startProg(0,totalLen);
 
@@ -197,9 +205,9 @@ console.log(sujetS);
   return (
     <View >
       {isLoading ? (
- <ActivityIndicator size="small" color="#0000ff"/>
+ <ActivityIndicator size="large" color="#0000ff"/>
   ) : (
-        <View>
+        <View style={{marginTop:80}}>
 
           {/*<View style={{ padding: 0, alignItems: 'center', justifyContent: 'center',flexDirection:'row'}}>
 
@@ -213,17 +221,17 @@ console.log(sujetS);
             </Pressable>
           </View>*/}
    <View>
-            <Animated.View
-              style={[
-                styles.fadingContainer,
-                {
-                  // Bind opacity to animated value
-                  opacity: fadeAnim,
-                },
-              ]}>
 
-            </Animated.View>
-            <Canvas style={{ height: height-30, width: width}}>
+     <Pressable style={styles.but} onPress={()=>{
+       console.log('stop',fadeAnim);
+       Animated.timing(fadeAnim,{}).stop();
+     }} ><Text>stop</Text></Pressable>
+     <Pressable style={styles.but} onPress={()=>{
+
+       Animated.timing(fadeAnim,{toValue: totalLen/2,
+         duration: totalLen/4,useNativeDriver: true}).start();
+     }} ><Text>cont</Text></Pressable>
+            <Canvas style={{marginTop: (height-size[1]*scaleS)/2-80, height:size[1]*scaleS, width: width}}>
 
                 <Group transform={[{ scale: scaleS ? scaleS : 1 }]}>
 
@@ -246,7 +254,18 @@ console.log(sujetS);
 
 
             </Canvas>
+     <Animated.View
+       style={[
+         styles.fadingContainer,
+         {
+           // Bind opacity to animated value
+           opacity: fadeAnim,
+         },
+       ]}>
+<View style={{height:3,backgroundColor:'blue',width:width*(progress/totalLen)}}>
 
+</View>
+     </Animated.View>
           </View>
 
 
@@ -280,7 +299,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  fadingContainer:{height:20,backgroundColor:'blue'},
+  but:{padding:12},
+  fadingContainer:{height:4,backgroundColor: '#eeeeee'},
   image: {
     flex: 1,
     justifyContent: 'center',

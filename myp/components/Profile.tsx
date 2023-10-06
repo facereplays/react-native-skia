@@ -1,4 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
+import Carousel from 'react-native-reanimated-carousel';
 import Auth from "../utils/Auth";
 import {
   Animated,
@@ -6,10 +7,11 @@ import {
   View,
   StyleSheet,
   Button,
-  SafeAreaView, ActivityIndicator, Pressable,
+  SafeAreaView, ActivityIndicator, Pressable, useWindowDimensions,
 } from 'react-native';
 import StoryS from "./StoryS";
 import {Sujet} from "../types/Sujet";
+import StoryT from "./StoryT";
 type Story = {
   id: number;
   name: string;
@@ -22,11 +24,13 @@ interface User {
 }
 
 
+
 const Profile = ({navigation}) => {
+  const {height, width, scale, fontScale} = useWindowDimensions();
   const  userGet = async(f)=>{
 
 
-      const res = await  fetch('https://buben-sha.herokuapp.com/api/records/users?exclude=password&join=story&&filter=email,eq,'+f.email, {
+      const res = await  fetch('https://buben-sha.herokuapp.com/api/records/users?exclude=password&join=story&filter=email,eq,'+f.email, {
 
         headers: {
           Accept: 'application/json',
@@ -46,72 +50,50 @@ setUser(rres.records[0]);
   useEffect(() => {
 Auth.login();
     Auth.check().then(f=> {
+      console.log(f);
       setToken(f["access_token"]);
       userGet(f);
     });
   }, []);
   // fadeAnim will be used as the value for opacity. Initial Value: 0
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const [totalLen, setTotalLen] = useState(0);
-  fadeAnim.addListener(u=>{setTotalLen(u.value)});
-  const fadeIn = () => {
-    // Will change fadeAnim value to 1 in 5 seconds
-    Animated.timing(fadeAnim, {
-      toValue: 1000,
-      duration: 5000,
-      useNativeDriver: true,
-    }).start();
-  };
-  const chF = () => {
-    Animated.timing(fadeAnim, {
-      toValue: 3000,
-      duration: 3000,
-      useNativeDriver: true,
-    }).start();
-  }
-  const fadeOut = () => {
-    // Will change fadeAnim value to 0 in 3 seconds
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 3000,
-      useNativeDriver: true,
-    }).start();
-  };
+
+
+
 
   return (
     <SafeAreaView style={styles.container}>
       {!user ? (
         <ActivityIndicator size="large" color="#0000ff"/>
       ) : (
-       <>
-        <View>
-      <Animated.View
-        style={[
-          styles.fadingContainer,
-          {
-            // Bind opacity to animated value
-            opacity: fadeAnim,
-          },
-        ]}>
-        <Text style={styles.fadingText}>Fading View!</Text>
-    </Animated.View>
-      <View >
-        <Text>{user.name}</Text>
-        {user.story.map((st,i)=>
+        <View style={{ flex: 1 }}>
+          <Carousel
+            loop
+            width={width}
+            vertical={true}
+            height={height}
+            autoPlay={false}
+            data={user.story}
+            scrollAnimationDuration={1000}
+            onSnapToItem={(index) => console.log('current index:', index)}
+            renderItem={({ index }) =>
 
-          (
-            <Pressable style={{padding:8}} onPress={() => navigation.navigate('List',{story:st.id})} key={i}>
-            <Text>{st.name}</Text>
-          </Pressable>
-
-          )
-
+                (
+              <View
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  justifyContent: 'center',
+                }}
+              >
+                <StoryT  itemS={user.story[index]} />
 
 
-       )}
-      </View>
+              </View>)
+
+            }
+
+          />
         </View>
-        </>
         )}
     </SafeAreaView>
   );

@@ -1,6 +1,4 @@
 import storage from './Storage';
-import {useSharedValue} from "react-native-reanimated";
-
 
 const Auth = {
   token:'',

@@ -2,30 +2,52 @@ import {
   Canvas,
   Path,
   SkPath,
-  SkPoint, SkPaint,
+  SkPoint,
+  SkPaint,
   createPicture,
   Picture,
   SkPicture,
   Skia,
-  TouchInfo, Group,
-  useTouchHandler, Circle, SkContourMeasure, DisplacementMap, Turbulence, Drawing, SkColor, Morphology,
+  TouchInfo,
+  Group,
+  useTouchHandler,
+  Circle,
+  SkContourMeasure,
+  DisplacementMap,
+  Turbulence,
+  Drawing,
+  SkColor,
+  Morphology,
+  SkRect, Rect,
+  SkShader, Blend,
 } from "@shopify/react-native-skia";
 import getStroke from 'perfect-freehand';
 import React, {useCallback, useEffect, useState,useMemo} from "react";
 import {Pressable, StyleSheet, Text, useWindowDimensions, View} from "react-native";
 import getSvgPathFromStroke from "../utils/pathFromStroke";
+import {Rectangle} from "paper";
+import {Color, Colors, strokes, Brush} from "../types/Sujet";
+import Toolbar from "../utils/ToolBar";
+import Palette from "../utils/Palette";
 
-type PathWithColorAndWidth = {
-  path: SkPath;
-
+class PathWithColorAndW  {
+  path: SkPath =  Skia.Path.Make();
   color: Color;
+  controlPath: SkPath = Skia.Path.Make();
   strokeWidth: number;
-drPoints:pathPoint[];
-  points: PointRecorded[];
-  pathPoints: SkPoint[];
-  status:number;
-  controlPath: SkPath;
-};
+  drPoints:pathPoint[]=[];
+  points: PointRecorded[]=[];
+  pathPoints: SkPoint[]=[];
+  status=0;
+  rect: SkRect;
+  pic: SkPicture;
+brush: Brush;
+  constructor(color,strokeWidth) {
+    this.color = color;
+    this.strokeWidth= strokeWidth;
+  }
+}
+
 type PointRecorded = {
   dist: number;
   life:number;
@@ -39,6 +61,7 @@ type pathPoint = {
   x: number;
   y: number;
   pressure: number;
+  tang:any;
 };
 type Layer = {
   x: number;
@@ -51,13 +74,15 @@ type Layer = {
    const [pics,setPics]=useState<Layer[]>([]);
    const [pPoints,setPPoints]=useState<{xy:SkPoint,sz:number}[]>([]);
    const [points,setPoints]=useState<PointRecorded[]>([]);
-const [paths, setPaths] = useState<PathWithColorAndWidth[]>([]);
-   const [path, setPath] = useState<PathWithColorAndWidth>(null);
-  const [color, setColor] = useState<Color>(Colors[0]);
+const [paths, setPaths] = useState<PathWithColorAndW[]>([]);
+   const [path, setPath] = useState<PathWithColorAndW>(null);
+   const [color, setColor] = useState<Color>(Colors[0]);
+   const [strokeWidth, setStrokeWidth] = useState(strokes[0]);
    const [path_S, setPath_S] = useState<SkPath>(null);
-  const [strokeWidth, setStrokeWidth] = useState(strokes[0]);
+   const [showDialog,setShowDialog] = useState<boolean>(false);
    const [ani,setAni] = useState(0);
-const brush = 'pen';
+   const [brush,setBrush] = useState(null);
+
    const unsubscribe = navigation.addListener('tabPress', (e) => {
      // Prevent default action
       setPaths([]);
@@ -78,20 +103,14 @@ const brush = 'pen';
     (touchInfo: TouchInfo) => {
       const newPath = Skia.Path.Make();
       const cPath = Skia.Path.Make();
-      const pa= {
-        path: newPath,
-        color,
-        strokeWidth,
-       points:[],
-        pathPoints:[],drPoints:[],
-        controlPath: cPath
-      } as PathWithColorAndWidth;
+      const stat=0;
+      const pa= new PathWithColorAndW(color,strokeWidth);
 
       setPaths((currentPaths) => {
         const { x, y } = touchInfo;
 
 console.log('newpa',currentPaths.length);
-pa.status=0;
+
         return [
           ...currentPaths,
          pa,
@@ -123,7 +142,7 @@ if(pat_.status==1) drawAquaPath(pat_,1);
   ];
 })
   //console.log(sum);
-sum >0 ? requestAnimationFrame(animate) : stopAni();
+sum <=0  ? stopAni() : requestAnimationFrame(animate);
 
 
  /**/
@@ -163,9 +182,9 @@ pat_.status=1;
 
      */
    },[]);
-const makePic = (pat_)=>{
+const crePic = (pat_) =>{
 
- let xMin=10000;let yMin=10000;
+  let xMin=10000;let yMin=10000;
   let xMax=-10000;let yMax=-10000;
   pat_.drPoints.map(po=>{
     xMin=Math.min(xMin,po.x);
@@ -173,25 +192,30 @@ const makePic = (pat_)=>{
     xMax=Math.max(xMax,po.x);
     yMax=Math.max(yMax,po.y);
   })
+const rect={ x: Math.max(xMin-80,0), y: Math.max(yMin-80,0), width: xMax-xMin+160, height: yMax -yMin+160 };
 
+ return {rect: rect ,pic:createPicture(
+    rect,
+    (canvas) => {
+      const paint = Skia.Paint();
 
-pat_.status=2;
-   const pictur = createPicture(
-     { x: xMin, y: yMin, width: xMax-xMin, height: yMax -yMin },
-     (canvas) => {
-       const paint = Skia.Paint();
-
-       pat_.drPoints.map( p => {
+      pat_.drPoints.map( p => {
         pLine(canvas,paint,p,pat_);
-       }     )
-     /*  paint.setColor(Skia.Color(pat_.color));
-       //paint.setStrokeWidth(8);
-       paint.setStyle(2);
-       pat_.path ? canvas.drawPath(pat_.path, paint) : null;
+      }     )
+      /*  paint.setColor(Skia.Color(pat_.color));
+        //paint.setStrokeWidth(8);
+        paint.setStyle(2);
+        pat_.path ? canvas.drawPath(pat_.path, paint) : null;
 
-      */
-     });
+       */
+    })};
 
+}
+const makePic  = (pat_)=>{
+ const source = crePic(pat_);
+const pictur = source.pic;
+
+  pat_.status=2;
    setPics(current => {
      const rr = current.concat([{x:0,y:0,pic:pictur}]);
 
@@ -232,12 +256,13 @@ currentPath.drPoints=[];
          if (dist1 - dist0 > 0) {
            const delta = (i * 4 - dist0) / (dist1 - dist0);
            pressure = Math.min(Math.max(s1.pressure, s.pressure), s.pressure + (s1.pressure - s.pressure) * delta);
-           life = Math.min(Math.max(s1.life, s.life), s.life + (s1.life - s.life) * delta);
+           life = totL- Math.min(Math.max(s1.life, s.life), s.life + (s1.life - s.life) * delta);
          } else {
-           life = s.life;
+           life = totL - s.life;
            pressure = s.pressure;
          }
-         currentPath.drPoints.push({x:xy[0].x, y:xy[0].y+life/10,pressure: pressure * 10 + life / 10} as pathPoint);
+
+         currentPath.drPoints.push({x:xy[0].x, y:xy[0].y+life/10,pressure: pressure * 10 + life / 10,tang: xy[1]} as pathPoint);
         // currentPath.path.addCircle(xy[0].x, xy[0].y+life/10, pressure * 10 + life / 10);
          // pAr.push({xy:xy,sz:s.pressure*10});
        });
@@ -250,7 +275,38 @@ currentPath.drPoints=[];
 
    }
    const pLine=(canvas,paint,p,path)=>{
-     const prog1 = `
+
+     const cc= Skia.Color(0x22000000);
+const ta=p.tang as SkPoint;
+   const effect1 = Skia.Shader.MakeRadialGradient({x:p.x,y: p.y} as SkPoint,p.pressure*0.7,
+     [cc,Skia.Color(0x11000000),Skia.Color(0x00000000)],[0,0.5,1],0)
+   //  const paint = Skia.Paint();
+      paint.setShader(effect1);
+
+     //   paint.setColor(Skia.Color(path.color));
+     canvas.drawCircle(p.x, p.y,  p.pressure*0.7,paint);
+   Array(8).fill(1).map(
+     o=>{
+       const ran =(.5 - Math.random());
+       const ran1 =(.5 - Math.random());
+       const ta1 = ran *ta.x*p.pressure;
+       const ta2 = ran1 *ta.y*p.pressure;
+
+       canvas.drawCircle(p.x+ta2, p.y-ta1, 2, paint);
+       //  canvas.drawCircle(p.x, p.y,5, paint);
+    //  canvas.drawCircle(p.x-ta2, p.y+ta1, 2, paint);
+
+   }
+   );
+
+    // canvas.drawCircle(p.x, p.y, p.pressure, paint);
+   }
+   const plPic_ = (path)=>{
+     if(path.status!=2){
+       const src = crePic(path);
+       const rect = src.rect;
+       const pic=src.pic.makeShader(3,3, 0);
+       const prog1 = `
     // Inputs supplied by shaders.skia.org:
     uniform float3 iResolution;      // Viewport resolution (pixels)
     uniform float  iTime;            // Shader playback time (s)
@@ -263,16 +319,86 @@ currentPath.drPoints=[];
       return half4(half3(1, 0, 0)*(1-d)*(1-d), 1);
     }
     `;
-     const cc= Skia.Color(0x22000000);
+       const source = Skia.RuntimeEffect.Make(`
+uniform float  iTime;
+uniform float2  offset;
+uniform half3  color;
+uniform shader iImage1;
+    half4 main(float2 fragCoord) {
+      half4 texColor = iImage1.eval(fragCoord-offset);
 
-   const effect1 = Skia.Shader.MakeRadialGradient({x:p.x,y: p.y} as SkPoint,p.pressure,
-     [cc,Skia.Color(0x11000000),Skia.Color(0x00000000)],[0,0.5,1],0)
+        return half4(color.rgb1*texColor.a);
+      }
+      `)
+       // @ts-ignore
+       const res =  source.makeShaderWithChildren([3,rect.x,rect.y,0.14,0.2,0.02],[pic]);
+       path.rect=rect;
+       const paint = Skia.Paint();
+       paint.setBlendMode(3);
+       paint.setShader(res);
 
+       path.paint=res;
+       const pict = createPicture(
+         rect,
+         (canvas) => {
 
+           canvas.drawRect(rect,paint);
 
-paint.setShader(effect1);
-     //  paint.setColor(Skia.Color(path.color));
-     canvas.drawCircle(p.x, p.y, p.pressure, paint);
+         }
+       )
+path.pic=pict;
+       return  pict;
+
+     }else{
+
+       return  path.pic;
+     }
+     //canvas.drawPicture(pic);
+
+   }
+   const plPic = (canvas,paint,path)=>{
+  if(path.status!=2){
+     const src = crePic(path);
+ const rect = src.rect;
+  const pic=src.pic.makeShader(3,3, 0);
+ const prog1 = `
+    // Inputs supplied by shaders.skia.org:
+    uniform float3 iResolution;      // Viewport resolution (pixels)
+    uniform float  iTime;            // Shader playback time (s)
+    uniform float4 iMouse;           // Mouse drag pos=.xy Click pos=.zw (pixels)
+    uniform float3 iImageResolution; // iImage1 resolution (pixels)
+    uniform shader iImage1;          // An input image.
+    half4 main(float2 fragCoord) {
+      float2 pct = fragCoord/iResolution.xy;
+      float d = distance(pct, iMouse.xy/iResolution.xy);
+      return half4(half3(1, 0, 0)*(1-d)*(1-d), 1);
+    }
+    `;
+     const source = Skia.RuntimeEffect.Make(`
+uniform float  iTime;
+uniform float2  offset;
+uniform half3  color;
+uniform shader iImage1;
+    half4 main(float2 fragCoord) {
+      half4 texColor = iImage1.eval(fragCoord-offset);
+
+        return half4(color,texColor.a);
+      }
+      `)
+     // @ts-ignore
+     const res =  source.makeShaderWithChildren([3,rect.x,rect.y,0.14,0.2,0.02],[pic]);
+   paint.setShader(res);
+canvas.drawRect(rect,paint);
+path.rect=rect;
+path.paint=res;
+   }else{
+//.log(path.rect);
+    paint.setShader(path.paint);
+
+    canvas.drawRect(path.rect,paint);
+  }
+  //canvas.drawPicture(pic);
+
    }
   const onDrawingActive = useCallback((touchInfo: TouchInfo) => {
 
@@ -293,7 +419,7 @@ paint.setShader(effect1);
       currentPath.pathPoints = ddm;
 
       currentPath.path ? currentPath.path.reset() : null;
-      if (brush == 'pen1') {
+      if (brush.name == 'pen1') {
 
         currentPath.path.moveTo(currentPath.pathPoints[0].x, currentPath.pathPoints[0].y);
         currentPath.pathPoints.map((p, i) => {
@@ -360,205 +486,80 @@ paint.setShader(effect1);
 
   return (
     <View style={style.container}>
-    <Toolbar
-      color={color}
-  strokeWidth={strokeWidth}
-  setColor={setColor}
-  setStrokeWidth={setStrokeWidth}
-      setPaths={setPaths}
-  />
+
 
   <Canvas style={style.container} onTouch={touchHandler}>
-    <Group>
-    {
+    <Rect x={0} y={0} width={width} height={height} color="white" />
+
+    <Drawing
+               drawing={({ canvas, paint }) => {
+                 paths.filter(p=>p.status>=2).map(path=> {
+                   path && path.pic ? canvas.drawPicture(path.pic) : null;
+                 })
+               }}
+    />
+
+
+    {/*
 
       pics.map((po, index) => (
         <Picture  key={index} picture={po.pic}/>
 
       ))
 
-    }
+  */  }
 
-    {
 
-     pPoints.filter(po=>po.xy.x).map((po, index) => (
-
-        <Circle
-          key={index}
-     r={po.sz} cx={po.xy.x} cy={po.xy.y}
-      color={'red'}
-        />
-))
-
-   }
     {paths.filter(p=>p.status<2).map((path, index) => (
-
-      /* <Path
-
-        path={path.path} style="fill"
-        color={path.color}
+      <Picture  key={index} picture={plPic_(path)}/>
+     /* <Drawing   key={index}
+        drawing={({ canvas, paint }) => {
+plPic(canvas,paint,path);
+}}
       />
       */
-      <Drawing   key={index}
-        drawing={({ canvas, paint }) => {
-path.drPoints.map( p => {
-       pLine(canvas,paint,p,path)
-        }     )
-        }}
-      />
+ ))}
 
 
-    ))}
 
-
-  </Group>
   </Canvas>
+      <Toolbar
+        color={color}
+        strokeWidth={strokeWidth}
+        setColor={setColor}
+        setStrokeWidth={setStrokeWidth}
+        setPaths={setPaths}
+        setPalette={setShowDialog}
+      />
+      {showDialog && (
+      <View style={style.dialog}>
+      <View style={{height:height,width:width,flex:1,alignItems:'center',justifyContent:'center'}}>
+        <View style={{height:height/2,width:width*0.8,backgroundColor:'white',borderRadius:10}}>
+          <Palette  setColor={setColor} setPalette={setShowDialog}/>
+        </View>
+      </View>
+      </View>
+        )}
   </View>
 );
 };
 
-const Colors = ["black", "red", "blue", "green", "yellow", "white"] as const;
 
-type Color = (typeof Colors)[number];
-
-type ToolbarProps = {
-  color: Color;
-  strokeWidth: number;
-  setColor: (color: Color) => void;
-  setPaths: (paths:[])  => void;
-  setStrokeWidth: (strokeWidth: number) => void;
-};
-
-const strokes = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
-
-const Toolbar = ({
-                   color,
-                   strokeWidth,
-                   setColor,
-                   setStrokeWidth,
-                   setPaths
-                 }: ToolbarProps) => {
-  const [showStrokes, setShowStrokes] = useState(false);
-
-  const handleStrokeWidthChange = (stroke: number) => {
-    setStrokeWidth(stroke);
-    setShowStrokes(false);
-  };
-  const handleDel = () => {
-    setPaths([]);
-
-  };
-
-  const handleChangeColor = (color: Color) => {
-    setColor(color);
-  };
-
-  return (
-    <>
-      {showStrokes && (
-      <View style={[style.toolbar, style.strokeToolbar]}>
-  {strokes.map((stroke) => (
-    <Pressable
-      onPress={() => handleStrokeWidthChange(stroke)}
-    key={stroke}
-    >
-    <Text style={style.strokeOption}>{stroke}</Text>
-      </Pressable>
-  ))}
-  </View>
-)}
-  <View style={[style.toolbar]}>
-  <Pressable
-    style={style.currentStroke}
-  onPress={() => setShowStrokes(!showStrokes)}
->
-  <Text>{strokeWidth}</Text>
-  </Pressable>
-    <Pressable
-      style={style.currentStroke}
-      onPress={() => handleDel()}
-    >
-      <Text>del</Text>
-    </Pressable>
-  <View style={style.separator} />
-  {Colors.map((item) => (
-    <ColorButton
-      isSelected={item === color}
-    key={item}
-    color={item}
-    onPress={() => handleChangeColor(item)}
-    />
-  ))}
-  </View>
-  </>
-);
-};
-
-type ColorButtonProps = {
-  color: Color;
-  isSelected: boolean;
-  onPress: () => void;
-};
-
-const ColorButton = ({ color, onPress, isSelected }: ColorButtonProps) => {
-  return (
-    <Pressable
-      onPress={onPress}
-  style={[
-      style.colorButton,
-  { backgroundColor: color },
-  isSelected && {
-    borderWidth: 2,
-    borderColor: "black",
-  },
-]}
-  />
-);
-};
 
 const style = StyleSheet.create({
+  dialog:{position:"absolute",top:0,left:0,backgroundColor:'#99999999'},
   container: {
     flex: 1,
     width: "100%",
+
   },
+  but:{padding:12},
   strokeOption: {
     fontSize: 18,
     backgroundColor: "#f7f7f7",
   },
-  toolbar: {
-    backgroundColor: "#ffffff",
-    height: 50,
-    width: 300,
-    borderRadius: 100,
-    borderColor: "#f0f0f0",
-    borderWidth: 1,
-    flexDirection: "row",
-    paddingHorizontal: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    alignSelf: "center",
-  },
-  separator: {
-    height: 30,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-    marginHorizontal: 10,
-  },
-  currentStroke: {
-    backgroundColor: "#f7f7f7",
-    borderRadius: 5,
-  },
-  strokeToolbar: {
-    position: "absolute",
-    top: 70,
-    justifyContent: "space-between",
-    zIndex: 100,
-  },
-  colorButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 100,
-    marginHorizontal: 5,
-  },
+
+
+
 });
  export default Draw;
